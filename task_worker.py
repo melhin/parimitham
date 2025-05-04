@@ -4,9 +4,10 @@ import logging
 import test.support.interpreters.channels as channels
 import threading
 import time
+import signal
 
 from rich.logging import RichHandler
-from django_app_wsgi import run_worker
+from django_app_wsgi import configure_worker
 
 
 # Variables from host interpreter
@@ -21,25 +22,27 @@ shutdown_event.clear()
 recv_channel = channels.RecvChannel(channel_id)
 
 
-def wait_for_signal():
+def wait_for_signal(worker):
     while True:
         msg = recv_channel.recv_nowait(default=None)
         if msg == "stop":
             logging.info("Received stop signal, shutting down")
-            shutdown_event.set()
+            worker.shutdown(signal.SIGINT, None)
         else:
             time.sleep(0.1)
 
-logging.info("Starting task worker")
+worker = configure_worker()
+
 try:
-    thread = threading.Thread(target=wait_for_signal)
+    thread = threading.Thread(target=wait_for_signal, args=(worker,))
     thread.start()
 except Exception as e:
     logging.exception(e)
 
 logging.debug("Starting task worker")
+
 try:
-    run_worker()
+    worker.start()
 except Exception as e:
     logging.exception(e)
 logging.debug("Task worker finished")

@@ -20,7 +20,7 @@ WORKERS = os.cpu_count() or 2
 """
     This function is started inside the subinterpreter.
     Running the application:
-    python run_dj.py -w 2 django_app_wsgi:app -v
+    python run_dj.py -w 2  -v
 """
 
 
@@ -87,7 +87,6 @@ class WebSubinterpreterWorker(SubinterpreterWorker):
             shared={
                 "worker_number": self.worker_number,
                 "insecure_sockets": tuple(insecure_sockets),
-                "application_path": self.config.application_path,
                 "workers": self.config.workers,
                 "channel_id": self.send_channel.id,
                 "log_level": self.log_level,
@@ -136,10 +135,6 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "application",
-        help="The application to dispatch to as path.to.module:instance.path",
-    )
-    parser.add_argument(
         "-w",
         "--workers",
         dest="workers",
@@ -161,7 +156,6 @@ if __name__ == "__main__":
         logger.setLevel(logging.INFO)
 
     config = Config()
-    config.application_path = args.application
     config.workers = args.workers
     sockets = config.create_sockets()
     logger.debug("Starting %s workers", args.workers)

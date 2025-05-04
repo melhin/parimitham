@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent
 
 
 def configure_settings():
@@ -54,10 +54,14 @@ def root(request):
 def health(request):
     return http.JsonResponse({"status": "ok"})
 
+def migrate():
+    from django.core.management import call_command
 
-def run_worker():
+    call_command("migrate", interactive=False)
+
+def configure_worker():
     from django_tasks.backends.database.management.commands.db_worker import Worker # noqa
-
+    migrate()
     worker = Worker(
         queue_names=DEFAULT_QUEUE_NAME.split(","),
         interval=1,
@@ -66,13 +70,17 @@ def run_worker():
         startup_delay=True,
     )
 
-    worker.start()
+    return worker
 
 
-urlpatterns = [urls.path("/health", health), urls.path("", root)]
+urlpatterns = [urls.path("health/", health), urls.path("", root)]
 
 setup()
 app = WSGIHandler()
 
 if __name__ == "__main__":
-    run_worker()
+    import sys
+    from django.core.management import execute_from_command_line
+
+    execute_from_command_line(sys.argv)
+    
