@@ -56,7 +56,7 @@ def health(request):
 
 
 def run_worker():
-    from django_tasks.backends.database.management.commands.db_worker import Worker
+    from django_tasks.backends.database.management.commands.db_worker import Worker # noqa
 
     worker = Worker(
         queue_names=DEFAULT_QUEUE_NAME.split(","),

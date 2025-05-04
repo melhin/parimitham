@@ -103,7 +103,6 @@ class TaskSubinterpreterWorker(SubinterpreterWorker):
         self.worker_init = open("task_worker.py", "r").read()
 
     def run(self):
-        # Convert insecure sockets to a tuple of tuples because the Sockets type cannot be shared
         logger.debug("Starting worker {}, interpreter {}".format(self.worker_number, self.interp))
         interpreters.run_string(
             self.interp,

@@ -4,8 +4,6 @@ import logging
 import test.support.interpreters.channels as channels
 import threading
 import time
-from socket import socket
-from typing import Any
 
 from rich.logging import RichHandler
 from django_app_wsgi import run_worker
