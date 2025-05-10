@@ -6,7 +6,7 @@ from time import sleep, time
 
 import _interpreters as interpreters
 import test.support.interpreters.channels as channels
-from hypercorn.config import Config, Sockets
+from hypercorn.config import Config
 from rich.logging import RichHandler
 
 logging.basicConfig(
@@ -36,12 +36,15 @@ class SubinterpreterWorker(threading.Thread):
         self.log_level = log_level
         super().__init__(target=self.run, daemon=True)
 
-
     def is_alive(self) -> bool:
         return interpreters.is_running(self.interp) and super().is_alive()
 
     def request_stop(self):
-        logger.info("Sending stop signal to worker {}, interpreter {}".format(self.worker_number, self.interp))
+        logger.info(
+            "Sending stop signal to worker {}, interpreter {}".format(
+                self.worker_number, self.interp
+            )
+        )
         self.send_channel.send_nowait("stop")
 
     def stop(self, timeout: float = 5.0):
@@ -51,49 +54,74 @@ class SubinterpreterWorker(threading.Thread):
             while self.is_alive():
                 if time() - start > timeout:
                     logger.warning(
-                        "Worker {}, interpreter {} did not stop in time".format(self.worker_number, self.interp)
+                        "Worker {}, interpreter {} did not stop in time".format(
+                            self.worker_number, self.interp
+                        )
                     )
                     break
                 sleep(0.1)
         else:
-            logger.debug("Worker {}, interpreter {} already stopped".format(self.worker_number, self.interp))
+            logger.debug(
+                "Worker {}, interpreter {} already stopped".format(
+                    self.worker_number, self.interp
+                )
+            )
 
     def destroy(self):
         if interpreters.is_running(self.interp):
             raise ValueError("Cannot destroy a running interpreter")
         interpreters.destroy(self.interp)
 
+
 class WebSubinterpreterWorker(SubinterpreterWorker):
-    def __init__(self, 
-        config: Config,
-        sockets: Sockets,
-                 *args,
-                 
-                 **kwargs):
+    def __init__(
+        self,
+        application_path: str,
+        workers: int,
+        enable_async: bool = False,
+        bind: str = "127.0.0.1:8000",
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
-        self.config = config  # TODO copy other parameters from config
-        self.sockets = sockets
+        self.application_path = application_path
+        self.workers = workers
+        self.enable_async = enable_async
+        self.bind = bind
         self.worker_init = open("web_worker.py", "r").read()
 
     def run(self):
         # Convert insecure sockets to a tuple of tuples because the Sockets type cannot be shared
+        config = Config()
+        config.bind = self.bind
+        config.workers = self.workers
+        sockets = config.create_sockets()
         insecure_sockets = [
-            (int(s.family), int(s.type), s.proto, dup(s.fileno())) for s in self.sockets.insecure_sockets
+            (int(s.family), int(s.type), s.proto, dup(s.fileno()))
+            for s in sockets.insecure_sockets
         ]
-        logger.debug("Starting worker {}, interpreter {}".format(self.worker_number, self.interp))
+        logger.debug(
+            "Starting worker {}, interpreter {}, enable_async {}, bind {}".format(
+                self.worker_number, self.interp, self.enable_async, self.bind
+            )
+        )
         interpreters.run_string(
             self.interp,
             self.worker_init,
             shared={
+                "application_path": self.application_path,
                 "worker_number": self.worker_number,
                 "insecure_sockets": tuple(insecure_sockets),
-                "workers": self.config.workers,
+                "workers": self.workers,
                 "channel_id": self.send_channel.id,
                 "log_level": self.log_level,
+                "enable_async": self.enable_async,
+                "bind": self.bind,
             },
         )
-        logger.debug("Worker {}, interpreter {} finished".format(self.worker_number, self.interp))
-
+        logger.debug(
+            "Worker {}, interpreter {} finished".format(self.worker_number, self.interp)
+        )
 
 
 class TaskSubinterpreterWorker(SubinterpreterWorker):
@@ -102,7 +130,9 @@ class TaskSubinterpreterWorker(SubinterpreterWorker):
         self.worker_init = open("task_worker.py", "r").read()
 
     def run(self):
-        logger.debug("Starting worker {}, interpreter {}".format(self.worker_number, self.interp))
+        logger.debug(
+            "Starting worker {}, interpreter {}".format(self.worker_number, self.interp)
+        )
         interpreters.run_string(
             self.interp,
             self.worker_init,
@@ -112,23 +142,42 @@ class TaskSubinterpreterWorker(SubinterpreterWorker):
                 "channel_id": self.send_channel.id,
             },
         )
-        logger.debug("Worker {}, interpreter {} finished".format(self.worker_number, self.interp))
+        logger.debug(
+            "Worker {}, interpreter {} finished".format(self.worker_number, self.interp)
+        )
 
 
+def fill_web_pool(threads, application_path, min_workers):
+    t = WebSubinterpreterWorker(
+        number=1,
+        application_path=application_path,
+        workers=min_workers,
+        log_level=logger.level,
+        bind="127.0.0.1:9001",
+    )
+    t.start()
+    threads.append(t)
 
 
-def fill_web_pool(threads, config, min_workers, sockets):
-    for i in range(min_workers):
-        t = WebSubinterpreterWorker(number=i, config=config, sockets=sockets,  log_level=logger.level)
-        t.start()
-        threads.append(t)
+def fill_async_pool(threads, application_path, min_workers):
+    t = WebSubinterpreterWorker(
+        number=2,
+        application_path=application_path,
+        workers=min_workers,
+        log_level=logger.level,
+        enable_async=True,
+        bind="127.0.0.1:9002",
+    )
+    t.start()
+    threads.append(t)
 
 
 def fill_task_pool(threads, min_workers):
     for i in range(min_workers):
-        t = TaskSubinterpreterWorker(number=i, log_level=logger.level)
+        t = TaskSubinterpreterWorker(number=i + 2, log_level=logger.level)
         t.start()
         threads.append(t)
+
 
 if __name__ == "__main__":
     import argparse
@@ -149,19 +198,19 @@ if __name__ == "__main__":
         action="store_true",
     )
     args = parser.parse_args()
+    sync_application_path = "django_app_wsgi:sync_app"
+    async_application_path = "django_app_wsgi:async_app"
 
     if args.verbose:
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
 
-    config = Config()
-    config.workers = args.workers
-    sockets = config.create_sockets()
     logger.debug("Starting %s workers", args.workers)
 
     threads: list[SubinterpreterWorker] = []
-    fill_web_pool(threads, config, args.workers, sockets)
+    fill_async_pool(threads, async_application_path, args.workers)
+    fill_web_pool(threads, sync_application_path, args.workers)
     fill_task_pool(threads, args.workers)
 
     try:
