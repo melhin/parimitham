@@ -1,13 +1,16 @@
+import asyncio
+import logging
+import os
+import threading
+import time
+from socket import socket
+from typing import Any
+
+import test.support.interpreters.channels as channels
+from hypercorn.asyncio import serve
 from hypercorn.asyncio.run import asyncio_worker
 from hypercorn.config import Config, Sockets
-import asyncio
-import threading
-import test.support.interpreters.channels as channels
-from socket import socket
 from rich.logging import RichHandler
-import time
-import logging
-from typing import Any
 
 # Variables from host interpreter
 log_level: int
@@ -15,8 +18,13 @@ worker_number: int
 channel_id: int
 insecure_sockets: tuple[tuple[int, int, Any, int], ...]
 workers: int
+application_path: str
+enable_async: bool
+bind: str
 
-logging.basicConfig(level=log_level, format=f"[{worker_number}] %(message)s", handlers=[RichHandler()])
+logging.basicConfig(
+    level=log_level, format=f"[{worker_number}] %(message)s", handlers=[RichHandler()]
+)
 logger = logging.getLogger(__name__)
 shutdown_event = asyncio.Event()
 shutdown_event.clear()
@@ -32,8 +40,11 @@ def wait_for_signal():
         else:
             time.sleep(0.1)
 
+
 logging.info("Starting hypercorn worker")
 try:
+    if enable_async:
+        os.environ["ASYNC_ENABLED"] = "1"
     _insecure_sockets = []
     # Rehydrate the sockets list from the tuple
     for s in insecure_sockets:
@@ -41,10 +52,11 @@ try:
     hypercorn_sockets = Sockets([], _insecure_sockets, [])
 
     config = Config()
-    config.application_path = "django_app_wsgi:app"
+    config.application_path = application_path
     config.workers = workers
     config.debug = log_level == logging.DEBUG
     config.accesslog = logger
+    config.bind = bind
     thread = threading.Thread(target=wait_for_signal)
     thread.start()
 except Exception as e:
