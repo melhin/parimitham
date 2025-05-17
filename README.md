@@ -23,9 +23,14 @@ A demonstration project showing how to run Django applications using Python's su
 uv sync
 ```
 
-3. Run the application with 2 workers:
+3. Run the sync application with 2 workers:
 ```sh
 uv run run_dj.py -w 2 -v
+```
+
+4. Run the async application with 2 workers
+```sh
+ python run_dj.py -w 3  -v -a
 ```
 
 ## Available Endpoints
@@ -34,7 +39,7 @@ uv run run_dj.py -w 2 -v
   - Synchronous endpoint that enqueues a sample task
   - Returns immediately after task creation
 
-- **Task Stream Endpoint**: [http://127.0.0.1:9002/stream/](http://127.0.0.1:9002/stream/)
+- **Task Stream Endpoint (Only when running async application)**: [http://127.0.0.1:9002/stream/](http://127.0.0.1:9002/stream/)
   - Asynchronous endpoint that streams task execution results
   - Uses Server-Sent Events (SSE) for real-time updates
 
@@ -67,3 +72,4 @@ uv run run_dj.py -h
 Key options:
 - `-w, --workers`: Number of task workers (default: CPU count)
 - `-v, --verbose`: Enable verbose logging
+- `-a, --async-run`: Run the async application

@@ -78,7 +78,6 @@ class WebSubinterpreterWorker(SubinterpreterWorker):
         self,
         application_path: str,
         workers: int,
-        enable_async: bool = False,
         bind: str = "127.0.0.1:8000",
         *args,
         **kwargs,
@@ -86,7 +85,6 @@ class WebSubinterpreterWorker(SubinterpreterWorker):
         super().__init__(*args, **kwargs)
         self.application_path = application_path
         self.workers = workers
-        self.enable_async = enable_async
         self.bind = bind
         self.worker_init = open("web_worker.py", "r").read()
 
@@ -101,8 +99,8 @@ class WebSubinterpreterWorker(SubinterpreterWorker):
             for s in sockets.insecure_sockets
         ]
         logger.debug(
-            "Starting worker {}, interpreter {}, enable_async {}, bind {}".format(
-                self.worker_number, self.interp, self.enable_async, self.bind
+            "Starting worker {}, interpreter {}, bind {}".format(
+                self.worker_number, self.interp, self.bind
             )
         )
         interpreters.run_string(
@@ -115,7 +113,6 @@ class WebSubinterpreterWorker(SubinterpreterWorker):
                 "workers": self.workers,
                 "channel_id": self.send_channel.id,
                 "log_level": self.log_level,
-                "enable_async": self.enable_async,
                 "bind": self.bind,
             },
         )
@@ -147,26 +144,26 @@ class TaskSubinterpreterWorker(SubinterpreterWorker):
         )
 
 
-def fill_web_pool(threads, application_path, min_workers):
+def fill_web_pool(threads, application_path, min_workers, bind):
+    logger.info("Running sync web server")
     t = WebSubinterpreterWorker(
         number=1,
         application_path=application_path,
         workers=min_workers,
         log_level=logger.level,
-        bind="127.0.0.1:9001",
+        bind=bind,
     )
     t.start()
     threads.append(t)
 
 
-def fill_async_pool(threads, application_path, min_workers):
+def fill_async_pool(threads, application_path, min_workers, bind):
     t = WebSubinterpreterWorker(
-        number=2,
+        number=1,
         application_path=application_path,
         workers=min_workers,
         log_level=logger.level,
-        enable_async=True,
-        bind="127.0.0.1:9002",
+        bind=bind,
     )
     t.start()
     threads.append(t)
@@ -174,7 +171,7 @@ def fill_async_pool(threads, application_path, min_workers):
 
 def fill_task_pool(threads, min_workers):
     for i in range(min_workers):
-        t = TaskSubinterpreterWorker(number=i + 2, log_level=logger.level)
+        t = TaskSubinterpreterWorker(number=i + 1, log_level=logger.level)
         t.start()
         threads.append(t)
 
@@ -197,9 +194,22 @@ if __name__ == "__main__":
         help="Increase logging verbosity",
         action="store_true",
     )
+    parser.add_argument(
+        "-a",
+        "--async-run",
+        help="Run the async application",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-b",
+        "--bind",
+        help="Bind address for the web server",
+        default="127.0.0.1:9001",
+        type=str,
+    )
     args = parser.parse_args()
-    sync_application_path = "django_app_wsgi:sync_app"
-    async_application_path = "django_app_wsgi:async_app"
+    sync_application_path = "django_app_wsgi:app"
+    async_application_path = "django_app_asgi:app"
 
     if args.verbose:
         logger.setLevel(logging.DEBUG)
@@ -209,8 +219,10 @@ if __name__ == "__main__":
     logger.debug("Starting %s workers", args.workers)
 
     threads: list[SubinterpreterWorker] = []
-    fill_async_pool(threads, async_application_path, args.workers)
-    fill_web_pool(threads, sync_application_path, args.workers)
+    if args.async_run:
+        fill_async_pool(threads, async_application_path, args.workers, args.bind)
+    else:
+        fill_web_pool(threads, sync_application_path, args.workers, args.bind)
     fill_task_pool(threads, args.workers)
 
     try:
