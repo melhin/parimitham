@@ -62,14 +62,58 @@ def delayed_hi() -> int:
     logger.info(f"Finished Sleeping for {random_delay} seconds")
 
 
-def root(request):
-    delayed_hi.enqueue()
-    return http.JsonResponse({"message": "Hello World wsgi"})
-
-
-def health(request):
+async def async_health(request):
     return http.JsonResponse({"status": "ok"})
 
+
+
+async def stream_finished(request):
+    from django_tasks.backends.database.models import DBTaskResult
+
+    async def streamed_events():
+        time_now = timezone.now()
+        connection_id = str(uuid4())
+        events_count = 0
+        while True:
+            try:
+                result = await DBTaskResult.objects.filter(
+                    finished_at__gt=time_now,
+                ).afirst()
+                if result:
+                    dumped_data = json.dumps(
+                        {
+                            "finished_id": str(result.id),
+                            "finished_at": str(result.finished_at),
+                            "status": result.status,
+                        }
+                    )
+                    event = "event: new-notification\n"
+                    event += f"data: {dumped_data}\n\n"
+                    events_count += 1
+                    logger.info(f"{connection_id} : Sent events. {events_count}")
+                    time_now = result.finished_at
+                    yield event
+                else:
+                    event = "event: heartbeat\n"
+                    event += "data: ping\n\n"
+                    events_count += 1
+                    logger.info(f"{connection_id} Sending heartbeats")
+                    yield event
+
+            except asyncio.CancelledError:
+                logging.info(
+                    f"{connection_id}: Disconnected after events. {events_count}"
+                )
+                raise
+            await asyncio.sleep(STREAM_CHECK_INTERVAL)
+
+    return StreamingHttpResponse(streamed_events(), content_type="text/event-stream")
+
+
+
+async def async_root(request):
+    await delayed_hi.aenqueue()
+    return http.JsonResponse({"message": "Hello World asgi"})
 
 def migrate():
     from django.core.management import call_command
@@ -94,17 +138,22 @@ def configure_worker():
     return worker
 
 
-def get_sync_urls():
-    return [urls.path("health/", health), urls.path("", root)]
+def get_async_urls():
+    return [
+        urls.path("health/", async_health),
+        urls.path("stream/", stream_finished),
+        urls.path("", async_root),
+    ]
 
 
-def get_wsgi_application():
+def get_asgi_application():
     global urlpatterns
     setup(set_prefix=False)
-    urlpatterns = get_sync_urls()
-    return WSGIHandler()
+    urlpatterns = get_async_urls()
+    return ASGIHandler()
 
-app = get_wsgi_application()
+
+app = get_asgi_application()
 
 if __name__ == "__main__":
     import sys

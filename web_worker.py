@@ -1,13 +1,11 @@
 import asyncio
 import logging
-import os
 import threading
 import time
 from socket import socket
 from typing import Any
 
 import test.support.interpreters.channels as channels
-from hypercorn.asyncio import serve
 from hypercorn.asyncio.run import asyncio_worker
 from hypercorn.config import Config, Sockets
 from rich.logging import RichHandler
@@ -19,7 +17,6 @@ channel_id: int
 insecure_sockets: tuple[tuple[int, int, Any, int], ...]
 workers: int
 application_path: str
-enable_async: bool
 bind: str
 
 logging.basicConfig(
@@ -43,8 +40,6 @@ def wait_for_signal():
 
 logging.info("Starting hypercorn worker")
 try:
-    if enable_async:
-        os.environ["ASYNC_ENABLED"] = "1"
     _insecure_sockets = []
     # Rehydrate the sockets list from the tuple
     for s in insecure_sockets:
