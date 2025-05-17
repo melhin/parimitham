@@ -23,15 +23,9 @@ A demonstration project showing how to run Django applications using Python's su
 uv sync
 ```
 
-3. Run the sync application with 2 workers:
-```sh
-uv run run_dj.py -w 2 -v
-```
-
-4. Run the async application with 2 workers
-```sh
- python run_dj.py -w 3  -v -a
-```
+3. You can run either the sync or the async app.
+  a. Run the sync application with 2 workers: ```uv run run_dj.py -w 2 -v```
+  b. Run the async application with 2 worker: ```uv run run_dj.py -w 3  -v -a```
 
 ## Available Endpoints
 
