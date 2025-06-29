@@ -5,7 +5,7 @@ from socket import dup
 from time import sleep, time
 
 import _interpreters as interpreters
-import test.support.interpreters.channels as channels
+from concurrent.interpreters import create_queue
 from hypercorn.config import Config
 from rich.logging import RichHandler
 
@@ -28,12 +28,14 @@ class SubinterpreterWorker(threading.Thread):
     def __init__(
         self,
         number: int,
+        worker_type: str,
         log_level: int = logging.DEBUG,
     ):
         self.worker_number = number
         self.interp = interpreters.create()
-        self.recv_channel, self.send_channel = channels.create()
+        self.system_queue = create_queue()
         self.log_level = log_level
+        self.worker_type = worker_type
         super().__init__(target=self.run, daemon=True)
 
     def is_alive(self) -> bool:
@@ -41,11 +43,11 @@ class SubinterpreterWorker(threading.Thread):
 
     def request_stop(self):
         logger.info(
-            "Sending stop signal to worker {}, interpreter {}".format(
-                self.worker_number, self.interp
+            "Sending stop signal to worker {} - {}, interpreter {}".format(
+                self.worker_type, self.worker_number, self.interp
             )
         )
-        self.send_channel.send_nowait("stop")
+        self.system_queue.put("stop")
 
     def stop(self, timeout: float = 5.0):
         if self.is_alive():
@@ -54,23 +56,18 @@ class SubinterpreterWorker(threading.Thread):
             while self.is_alive():
                 if time() - start > timeout:
                     logger.warning(
-                        "Worker {}, interpreter {} did not stop in time".format(
-                            self.worker_number, self.interp
+                        "Worker {} - {}, interpreter {} did not stop in time".format(
+                            self.worker_type, self.worker_number, self.interp
                         )
                     )
                     break
                 sleep(0.1)
         else:
             logger.debug(
-                "Worker {}, interpreter {} already stopped".format(
-                    self.worker_number, self.interp
+                "Worker {} - {}, interpreter {} already stopped".format(
+                    self.worker_type, self.worker_number, self.interp
                 )
             )
-
-    def destroy(self):
-        if interpreters.is_running(self.interp):
-            raise ValueError("Cannot destroy a running interpreter")
-        interpreters.destroy(self.interp)
 
 
 class WebSubinterpreterWorker(SubinterpreterWorker):
@@ -82,7 +79,7 @@ class WebSubinterpreterWorker(SubinterpreterWorker):
         *args,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs, worker_type="web")
         self.application_path = application_path
         self.workers = workers
         self.bind = bind
@@ -111,7 +108,7 @@ class WebSubinterpreterWorker(SubinterpreterWorker):
                 "worker_number": self.worker_number,
                 "insecure_sockets": tuple(insecure_sockets),
                 "workers": self.workers,
-                "channel_id": self.send_channel.id,
+                "system_queue": self.system_queue,
                 "log_level": self.log_level,
                 "bind": self.bind,
             },
@@ -123,12 +120,12 @@ class WebSubinterpreterWorker(SubinterpreterWorker):
 
 class TaskSubinterpreterWorker(SubinterpreterWorker):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs, worker_type="task")
         self.worker_init = open("task_worker.py", "r").read()
 
     def run(self):
         logger.debug(
-            "Starting worker {}, interpreter {}".format(self.worker_number, self.interp)
+            "Starting worker {} - {}, interpreter {}".format(self.worker_type, self.worker_number, self.interp)
         )
         interpreters.run_string(
             self.interp,
@@ -136,11 +133,11 @@ class TaskSubinterpreterWorker(SubinterpreterWorker):
             shared={
                 "log_level": self.log_level,
                 "worker_number": self.worker_number,
-                "channel_id": self.send_channel.id,
+                "system_queue": self.system_queue,
             },
         )
         logger.debug(
-            "Worker {}, interpreter {} finished".format(self.worker_number, self.interp)
+            "Task Worker {} - {}, interpreter {} finished".format(self.worker_type, self.worker_number, self.interp)
         )
 
 
@@ -234,7 +231,7 @@ if __name__ == "__main__":
             t.request_stop()
         for t in threads:
             t.stop()
-            # t.destroy()
 
+    logger.debug("All workers stopped successfully")
     # Todo: destroy interpreters on recycle/reload
     # Bug: raises error about remaining sub interpreters after shutdown.

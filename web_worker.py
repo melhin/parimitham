@@ -4,8 +4,7 @@ import threading
 import time
 from socket import socket
 from typing import Any
-
-import test.support.interpreters.channels as channels
+from concurrent.interpreters import Queue, QueueEmpty
 from hypercorn.asyncio.run import asyncio_worker
 from hypercorn.config import Config, Sockets
 from rich.logging import RichHandler
@@ -18,6 +17,7 @@ insecure_sockets: tuple[tuple[int, int, Any, int], ...]
 workers: int
 application_path: str
 bind: str
+system_queue: Queue
 
 logging.basicConfig(
     level=log_level, format=f"[{worker_number}] %(message)s", handlers=[RichHandler()]
@@ -25,14 +25,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 shutdown_event = asyncio.Event()
 shutdown_event.clear()
-recv_channel = channels.RecvChannel(channel_id)
 
 
 def wait_for_signal():
     while True:
-        msg = recv_channel.recv_nowait(default=None)
+        try:
+            msg = system_queue.get(timeout=1000)  # Wait for a message from the system queue
+        except QueueEmpty:
+            continue
         if msg == "stop":
-            logging.info("Received stop signal, shutting down")
+            logging.info(f"Received stop signal - Web App - worker {worker_number} shutting down")
             shutdown_event.set()
         else:
             time.sleep(0.1)
