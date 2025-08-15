@@ -5,7 +5,7 @@ A demonstration project showing how to run Django applications using Python's su
 ## Features
 
 - Single-file Django project architecture
-- Background task processing with Django Tasks
+- Background task processing with Django Tasks (SQLite backend)
 - Multi-worker setup using Python subinterpreters
 - Based on [subinterpreter-web](https://github.com/tonybaloney/subinterpreter-web) architecture
 
@@ -26,8 +26,7 @@ uv sync
 ```bash
 uv run up.py -w 4 -t 2 -b 127.0.0.1:8001
 ```
-  a. Run the sync application with 2 workers: ```uv run run_dj.py -w 2 -v```
-  b. Run the async application with 2 worker: ```uv run run_dj.py -w 3  -v -a```
+
 
 ## Available Endpoints
 
