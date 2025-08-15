@@ -1,17 +1,11 @@
-import asyncio
-import json
 import logging
 import os
 import random
 import time
 from pathlib import Path
-from uuid import uuid4
 
 from django import conf, http, setup, urls
-from django.core.handlers.asgi import ASGIHandler
 from django.core.handlers.wsgi import WSGIHandler
-from django.http import StreamingHttpResponse
-from django.utils import timezone
 from django_tasks import DEFAULT_QUEUE_NAME, DEFAULT_TASK_BACKEND_ALIAS, task
 
 logger = logging.getLogger(__name__)

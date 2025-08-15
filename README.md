@@ -5,14 +5,13 @@ A demonstration project showing how to run Django applications using Python's su
 ## Features
 
 - Single-file Django project architecture
-- Background task processing with Django
+- Background task processing with Django Tasks
 - Multi-worker setup using Python subinterpreters
-- Async endpoint for task result streaming
 - Based on [subinterpreter-web](https://github.com/tonybaloney/subinterpreter-web) architecture
 
 ## Prerequisites
 
-- Python 3.13+ (required for subinterpreters)
+- Python 3.14+ (required for subinterpreters)
 - [uv package manager](https://docs.astral.sh/uv/)
 
 ## Quick Start
@@ -23,19 +22,18 @@ A demonstration project showing how to run Django applications using Python's su
 uv sync
 ```
 
-3. You can run either the sync or the async app.
+3. Start web and task workers in different interpreters:
+```bash
+uv run up.py -w 4 -t 2 -b 127.0.0.1:8001
+```
   a. Run the sync application with 2 workers: ```uv run run_dj.py -w 2 -v```
   b. Run the async application with 2 worker: ```uv run run_dj.py -w 3  -v -a```
 
 ## Available Endpoints
 
-- **Task Enqueue Endpoint**: [http://127.0.0.1:9001/](http://127.0.0.1:9001/)
+- **Task Enqueue Endpoint**: [http://127.0.0.1:8001/](http://127.0.0.1:9001/)
   - Synchronous endpoint that enqueues a sample task
   - Returns immediately after task creation
-
-- **Task Stream Endpoint (Only when running async application)**: [http://127.0.0.1:9002/stream/](http://127.0.0.1:9002/stream/)
-  - Asynchronous endpoint that streams task execution results
-  - Uses Server-Sent Events (SSE) for real-time updates
 
 ## Architecture
 
@@ -58,12 +56,24 @@ pragma mmap_size = 30000000000;  -- Increase memory-mapped I/O size
 
 ## Command Line Options
 
-Run the application with `-h` to see available options:
-```sh
-uv run run_dj.py -h
+ Help option:
+```bash
+uv run up.py -h
 ```
 
-Key options:
-- `-w, --workers`: Number of task workers (default: CPU count)
-- `-v, --verbose`: Enable verbose logging
-- `-a, --async-run`: Run the async application
+```
+Django application with InterpreterPoolEExecutor
+options:
+  -h, --help            show this help message and exit
+  -w, --workers WORKERS
+                        The number of web workers to spawn and use
+  -v, --verbose         Increase logging verbosity
+  -a, --async-run       Run the async application
+  -b, --bind BIND       Bind address for the web server
+  -t, --task-workers TASK_WORKERS
+                        Number of task workers
+```
+Example:
+```bash
+uv run up.py -w 4 -t 2 -b 127.0.0.1:8001
+```
