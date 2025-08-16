@@ -14,7 +14,7 @@ from hypercorn.config import Config
 from rich.logging import RichHandler
 
 from concurrent.futures.interpreter import InterpreterPoolExecutor
-from concurrent.interpreters import create_queue
+from concurrent.interpreters import create_queue, Queue
 
 from worker_task import web_worker_task, task_worker_task
 
@@ -38,8 +38,8 @@ class InterpreterPoolManager:
         self.futures: List[Future] = []
         self.shutdown_queues = []  # List of Queue objects
         self._shutdown_requested = False
-        
-    def start_web_workers(self, app_path: str, workers: int, bind: str = "127.0.0.1:8000"):
+
+    def start_web_workers(self, app_path: str, workers: int, worker_queue: Queue, bind: str = "127.0.0.1:8000"):
         """Start web workers using the pool executor."""
         if not self.executor:
             self.executor = InterpreterPoolExecutor(max_workers=self.max_workers)
@@ -69,13 +69,14 @@ class InterpreterPoolManager:
             workers=workers,
             bind=bind,
             insecure_sockets=tuple(insecure_sockets),
-            shutdown_queue=shutdown_queue
+            shutdown_queue=shutdown_queue,
+            worker_queue=worker_queue
         )
         self.futures.append(future)
         
         logger.debug("Web worker submitted to pool executor")
-        
-    def start_task_workers(self, num_workers: int):
+
+    def start_task_workers(self, num_workers: int, worker_queue: Queue):
         """Start task workers using the pool executor."""
         if not self.executor:
             self.executor = InterpreterPoolExecutor(max_workers=self.max_workers)
@@ -92,7 +93,8 @@ class InterpreterPoolManager:
                 task_worker_task,
                 worker_number=i + 1,
                 log_level=logger.level,
-                shutdown_queue=shutdown_queue
+                shutdown_queue=shutdown_queue,
+                worker_queue=worker_queue
             )
             self.futures.append(future)
             
@@ -134,6 +136,7 @@ class InterpreterPoolManager:
                 future.result()
             except Exception as e:
                 logger.error("Worker task failed: %s", e)
+                raise
     
     def __enter__(self):
         return self
@@ -154,13 +157,14 @@ def run_application(
     
     # Calculate total workers needed
     total_workers = 1 + task_workers  # 1 web worker + N task workers
+    worker_queue = create_queue()
     
     with InterpreterPoolManager(max_workers=total_workers) as pool:
         try:
             # Start workers
-            pool.start_web_workers(app_path, workers, bind)
-            pool.start_task_workers(task_workers)
-            
+            pool.start_web_workers(app_path, workers, worker_queue, bind)
+            pool.start_task_workers(task_workers, worker_queue)
+
             logger.info("All workers started. Press Ctrl+C to stop.")
             
             # Wait for completion
@@ -210,9 +214,9 @@ if __name__ == "__main__":
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
-    
-    application_path = "django_app_wsgi:app"
-    
+
+    application_path = "parimitham.wsgi:application"
+
     # Run the application
     run_application(
         app_path=application_path,
