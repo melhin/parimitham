@@ -1,35 +1,28 @@
 import logging
 import time
-from django.core.management.base import BaseCommand
 from django.utils import timezone
 from queue_bridge import get_shareable_queue
 from django.utils.module_loading import import_string
 from concurrent.interpreters import QueueEmpty
+from django_tasks.backends.database.management.commands import db_worker
+
 from typing import Any, Tuple
 
 logger = logging.getLogger(__name__)
 
 
-class Command(BaseCommand):
-    help = "Poll the subinterpreter queue and execute tasks"
 
-    def add_arguments(self, parser):
-        parser.add_argument(
-            '--timeout',
-            type=float,
-            default=1.0,
-            help='Queue get timeout in seconds (default: 1.0)'
-        )
+class InterpreterWorker(db_worker.Worker):
 
-    def handle(self, *args, **options):
-        timeout = options['timeout']
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
+    def start(self, timeout: float = 1.0) -> None:
+        self.running = True
         logger.info("Starting task worker with timeout: %s", timeout)
         worker_queue = get_shareable_queue("worker_queue")
         logger.info("Using worker queue: %s", worker_queue)
-        tasks_processed = 0
-        
-        while True:
+        while self.running:
             try:
                 # Get task from queue with timeout
                 shareable_task = worker_queue.get(timeout=timeout)
@@ -39,17 +32,19 @@ class Command(BaseCommand):
 
                 logger.info("Got task from queue: %s", shareable_task)
                 # Execute the task
-                self._execute_task(shareable_task)
-                tasks_processed += 1
+                self.run_task(shareable_task)
                 
             except QueueEmpty:
                 continue
             except (OSError, RuntimeError):
                 # Handle queue operation errors gracefully
                 time.sleep(0.1)
-                        
 
-    def _execute_task(self, shareable_task: Tuple[str, tuple, dict]) -> Any:
+    def shutdown(self, signum, frame):
+        logger.info("Shutting down worker...")
+        self.running = False
+
+    def run_task(self, shareable_task: Tuple[str, tuple, dict]) -> Any:
         """Execute a task from the shareable task tuple."""
         try:
             module_path, args, kwargs = shareable_task
