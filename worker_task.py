@@ -120,7 +120,7 @@ def task_worker_task(
         worker.shutdown(signal.SIGINT, None)
 
     set_shareable_queue("worker_queue", worker_queue)
-    configure_worker()
+    worker = configure_worker()
     logger.info("Task worker configured with queue: %s", worker_queue)
 
     try:
@@ -132,6 +132,7 @@ def task_worker_task(
         signal_thread.start()
         
         logging.debug("Starting task worker")
+        worker.start()
         
     except (OSError, RuntimeError) as e:
         logging.exception("Error in task worker: %s", e)

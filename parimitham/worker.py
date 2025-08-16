@@ -3,6 +3,7 @@ import os
 
 import django
 from django.core.management import call_command
+from django_tasks import DEFAULT_QUEUE_NAME, DEFAULT_TASK_BACKEND_ALIAS
 
 logger = logging.getLogger(__name__)
 
@@ -18,5 +19,13 @@ def configure_worker():
     django.setup(set_prefix=False)
     # Run migrations first
     migrate()
+    from parimitham.core.management.commands.execute_task_from_interpreter_queue import InterpreterWorker
     logger.info("Starting task execution...")
-    call_command("execute_task_from_interpreter_queue")
+    worker = InterpreterWorker(
+              queue_names=DEFAULT_QUEUE_NAME.split(","),
+        interval=1,
+        batch=False,
+        backend_name=DEFAULT_TASK_BACKEND_ALIAS,
+        startup_delay=True,
+    )
+    return worker
