@@ -32,14 +32,13 @@ parimitham/
 ## Quick Start
 
 1. Clone the repository
-2. Install dependencies:
+2. Install relevant python version, If using pyenv:
+```sh
+pyenv install 3.14.0rc2
+```
+3. Install dependencies:
 ```sh
 uv sync
-```
-
-3. Run database migrations:
-```sh
-uv run python manage.py migrate
 ```
 
 4. Start web and task workers in different interpreters:
