@@ -6,6 +6,7 @@ from django_tasks import task
 
 logger = logging.getLogger(__name__)
 
+
 @task()
 def delayed_hi() -> int:
     random_delay = random.randint(1, 5)

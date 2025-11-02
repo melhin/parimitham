@@ -1,16 +1,14 @@
+import logging
 from dataclasses import dataclass
 from typing import TypeVar
-
-from typing_extensions import ParamSpec
+from uuid import uuid7
 
 from django_tasks.backends.base import BaseTaskBackend
-from django_tasks.task import Task
-from django_tasks.task import TaskResult as BaseTaskResult, ResultStatus
-from uuid import uuid7
+from django_tasks.task import ResultStatus, Task
+from django_tasks.task import TaskResult as BaseTaskResult
+from typing_extensions import ParamSpec
+
 from queue_bridge import get_shareable_queue
-
-import logging
-
 
 logger = logging.getLogger("__name__")
 
@@ -18,10 +16,8 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-
 @dataclass(frozen=True)
-class TaskResult(BaseTaskResult[T]):
-    ...
+class TaskResult(BaseTaskResult[T]): ...
 
 
 class InterpreterQueueBackend(BaseTaskBackend):
@@ -35,8 +31,7 @@ class InterpreterQueueBackend(BaseTaskBackend):
         args: P.args,  # type:ignore[valid-type]
         kwargs: P.kwargs,  # type:ignore[valid-type]
     ) -> TaskResult:
-
-        result  = TaskResult(
+        result = TaskResult(
             id=str(uuid7()),
             task=task,
             args=args,
@@ -47,7 +42,7 @@ class InterpreterQueueBackend(BaseTaskBackend):
             finished_at=None,
             backend=self.alias,
         )
-        shareable_task = ( task.module_path, args, kwargs)
+        shareable_task = (task.module_path, args, kwargs)
         worker_queue = get_shareable_queue("worker_queue")
         logger.info("Enqueuing in queue : %s", worker_queue)
         worker_queue.put(shareable_task)

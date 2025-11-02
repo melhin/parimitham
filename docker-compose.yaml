@@ -1,0 +1,17 @@
+version: "3.4"
+
+volumes:
+  pravham_pg_data: {}
+
+services:
+  db:
+    image: postgres:15
+    restart: on-failure
+    environment:
+      POSTGRES_DB: parimitham
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pravham_pg_data:/var/lib/postgresql/data

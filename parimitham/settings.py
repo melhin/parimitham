@@ -1,70 +1,89 @@
-from pathlib import Path
 import os
+from pathlib import Path
+
+from configurations.values import BooleanValue, PositiveIntegerValue, Value
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-change-in-production')
-DEBUG = os.environ.get('DEBUG', 'True')
+SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-dev-key-change-in-production")
+DEBUG = BooleanValue(environ_name="DEBUG", default=False)
 ALLOWED_HOSTS = ["*"]
-ROOT_URLCONF = 'parimitham.urls'
-WSGI_APPLICATION = 'parimitham.wsgi.application'
+ROOT_URLCONF = "parimitham.urls"
+WSGI_APPLICATION = "parimitham.wsgi.application"
 
 INSTALLED_APPS = [
-   'django.contrib.contenttypes',
-   'django.contrib.auth',
-   'django_tasks',
-   'django_tasks.backends.database',
-   'parimitham.core',
+    "django.contrib.contenttypes",
+    "django.contrib.auth",
+    "django_tasks",
+    "django_tasks.backends.database",
+    "parimitham.core",
 ]
 
 MIDDLEWARE = [
-   'django.middleware.security.SecurityMiddleware',
-   'django.middleware.common.CommonMiddleware',
-   'django.middleware.csrf.CsrfViewMiddleware',
-   'django.contrib.sessions.middleware.SessionMiddleware',
-   'django.contrib.auth.middleware.AuthenticationMiddleware',
-   'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
 TEMPLATES = [
-   {
-       'BACKEND': 'django.template.backends.django.DjangoTemplates',
-       'DIRS': [],
-       'APP_DIRS': True,
-       'OPTIONS': {
-           'context_processors': [
-               'django.template.context_processors.debug',
-               'django.template.context_processors.request',
-               'django.contrib.auth.context_processors.auth',
-               'django.contrib.messages.context_processors.messages',
-           ],
-       },
-   },
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
 ]
-TASKS = {
-   'default': {'BACKEND': 'parimitham.core.interpreter_queue_backend.InterpreterQueueBackend'}
-}
 
+ENABLE_DB_BACKED_TASK = BooleanValue(environ_prefix=None, environ_name="ENABLE_DB_BACKED_TASK", default=False)
+
+if ENABLE_DB_BACKED_TASK:
+    TASKS = {"default": {"BACKEND": "django_tasks.backends.database.DatabaseBackend"}}
+else:
+    TASKS = {"default": {"BACKEND": "parimitham.core.interpreter_queue_backend.InterpreterQueueBackend"}}
+
+DB_HOST = Value(environ_prefix=None, environ_name="DB_HOST", default="localhost")
+DB_NAME = Value(environ_prefix=None, environ_name="DB_NAME", default="parimitham")
+DB_SCHEMA = Value(environ_prefix=None, environ_name="DB_SCHEMA", default="public")
+DB_USER = Value(environ_prefix=None, environ_name="DB_USER", default="postgres")
+DB_PASS = Value(environ_prefix=None, environ_name="DB_PASS", default="postgres")
+
+DB_PORT = PositiveIntegerValue(environ_prefix=None, environ_name="DB_PORT", default=5432)
 DATABASES = {
-   'default': {
-       'ENGINE': 'django.db.backends.sqlite3',
-       'NAME': BASE_DIR / 'db.sqlite3',
-       'OPTIONS': {
-           'init_command': (
-               'pragma journal_mode = WAL; pragma synchronous = normal; '
-               'pragma temp_store = memory; pragma mmap_size = 30000000000;'
-           )
-       },
-   }
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "CONN_MAX_AGE": 60,
+        "OPTIONS": {
+            "options": "-c search_path=" + DB_SCHEMA,
+        },
+        "NAME": DB_NAME,
+        "USER": DB_USER,
+        "PASSWORD": DB_PASS,
+        "HOST": DB_HOST,
+        "PORT": DB_PORT,
+        "TEST": {
+            "NAME": "test_" + DB_NAME,
+        },
+    }
 }
 
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
