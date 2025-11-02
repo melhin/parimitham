@@ -1,16 +1,15 @@
-import logging
-import threading
 import asyncio
-import time
+import logging
 import signal
-from socket import socket
-from typing import Callable, Optional, Any
-
-from hypercorn.config import Config
-from rich.logging import RichHandler
+import threading
+import time
 from concurrent.interpreters import Queue, QueueEmpty
+from socket import socket
+from typing import Any, Callable, Optional
+
 from hypercorn.asyncio.run import asyncio_worker
-from hypercorn.config import Sockets
+from hypercorn.config import Config, Sockets
+from rich.logging import RichHandler
 
 from parimitham.worker import configure_worker
 from queue_bridge import set_shareable_queue
@@ -21,7 +20,7 @@ def shutdown_monitor_task(
     worker_number: int,
     shutdown_callback: Callable[[Any], None],
     worker_instance: Optional[Any] = None,
-    worker_type: str = "worker"
+    worker_type: str = "worker",
 ) -> None:
     """
     Common shutdown monitoring task that waits for shutdown signals.
@@ -51,14 +50,12 @@ def web_worker_task(
     bind: str,
     insecure_sockets: tuple,
     shutdown_queue: Queue,
-    worker_queue: Queue
+    worker_queue: Queue,
 ) -> None:
     """
     Web worker task to be executed in a subinterpreter using InterpreterPoolExecutor.
     """
-    logging.basicConfig(
-        level=log_level, format=f"[{worker_number}] %(message)s", handlers=[RichHandler()]
-    )
+    logging.basicConfig(level=log_level, format=f"[{worker_number}] %(message)s", handlers=[RichHandler()])
 
     logger = logging.getLogger(__name__)
     logger.info("Starting web worker: %d", worker_number)
@@ -83,35 +80,28 @@ def web_worker_task(
         worker_config.debug = log_level == logging.DEBUG
         worker_config.accesslog = logger
         worker_config.bind = bind
-        
+
         # Start signal monitoring thread
         signal_thread = threading.Thread(
-            target=shutdown_monitor_task, 
-            args=(shutdown_queue, worker_number, web_worker_shutdown_callback, None, "Web App worker")
+            target=shutdown_monitor_task,
+            args=(shutdown_queue, worker_number, web_worker_shutdown_callback, None, "Web App worker"),
         )
         signal_thread.start()
-        
+
         logger.debug("Starting asyncio worker")
         asyncio_worker(worker_config, worker_hypercorn_sockets, shutdown_event=worker_shutdown_event)
-        
+
     except (OSError, RuntimeError) as e:
         logger.exception("Error in web worker: %s", e)
     finally:
         logging.debug("asyncio worker finished")
 
 
-def task_worker_task(
-    worker_number: int,
-    log_level: int,
-    shutdown_queue: Queue,
-    worker_queue: Queue
-) -> None:
+def task_worker_task(worker_number: int, log_level: int, shutdown_queue: Queue, worker_queue: Queue) -> None:
     """
     Task worker task to be executed in a subinterpreter using InterpreterPoolExecutor.
     """
-    logging.basicConfig(
-        level=log_level, format=f"[{worker_number}] %(message)s", handlers=[RichHandler()]
-    )
+    logging.basicConfig(level=log_level, format=f"[{worker_number}] %(message)s", handlers=[RichHandler()])
     logger = logging.getLogger(__name__)
     logger.info("Starting task worker: %d", worker_number)
 
@@ -127,13 +117,13 @@ def task_worker_task(
         # Start signal monitoring thread
         signal_thread = threading.Thread(
             target=shutdown_monitor_task,
-            args=(shutdown_queue, worker_number, task_worker_shutdown_callback, worker, "Task worker")
+            args=(shutdown_queue, worker_number, task_worker_shutdown_callback, worker, "Task worker"),
         )
         signal_thread.start()
-        
+
         logging.debug("Starting task worker")
         worker.start()
-        
+
     except (OSError, RuntimeError) as e:
         logging.exception("Error in task worker: %s", e)
     finally:

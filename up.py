@@ -6,17 +6,16 @@ This replaces the manual subinterpreter management with the new Python 3.14+ Int
 import logging
 import os
 import time
+from concurrent.futures import Future
+from concurrent.futures.interpreter import InterpreterPoolExecutor
+from concurrent.interpreters import Queue, create_queue
 from socket import dup
 from typing import List
-from concurrent.futures import Future
 
 from hypercorn.config import Config
 from rich.logging import RichHandler
 
-from concurrent.futures.interpreter import InterpreterPoolExecutor
-from concurrent.interpreters import create_queue, Queue
-
-from worker_task import web_worker_task, task_worker_task
+from worker_task import task_worker_task, web_worker_task
 
 logging.basicConfig(
     level=logging.INFO, format="[pool_manager] %(message)s", handlers=[RichHandler()]

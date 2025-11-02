@@ -1,6 +1,7 @@
-from pathlib import Path
 import os
-from configurations.values import  PositiveIntegerValue, Value
+from pathlib import Path
+
+from configurations.values import PositiveIntegerValue, Value
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

@@ -1,16 +1,14 @@
+import logging
 from dataclasses import dataclass
 from typing import TypeVar
-
-from typing_extensions import ParamSpec
+from uuid import uuid7
 
 from django_tasks.backends.base import BaseTaskBackend
-from django_tasks.task import Task
-from django_tasks.task import TaskResult as BaseTaskResult, ResultStatus
-from uuid import uuid7
+from django_tasks.task import ResultStatus, Task
+from django_tasks.task import TaskResult as BaseTaskResult
+from typing_extensions import ParamSpec
+
 from queue_bridge import get_shareable_queue
-
-import logging
-
 
 logger = logging.getLogger("__name__")
 

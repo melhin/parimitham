@@ -1,9 +1,8 @@
 """Bridge module to share queues between subinterpreter workers and Django"""
 
 from concurrent.interpreters import Queue
-from typing import Dict, Optional
 from functools import cache
-
+from typing import Dict, Optional
 
 # Global storage for worker queues
 _worker_queues: Dict[int, Queue] = {}

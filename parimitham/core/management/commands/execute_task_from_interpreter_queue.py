@@ -1,12 +1,13 @@
 import logging
 import time
-from django.utils import timezone
-from queue_bridge import get_shareable_queue
-from django.utils.module_loading import import_string
 from concurrent.interpreters import QueueEmpty
+from typing import Any, Tuple
+
+from django.utils import timezone
+from django.utils.module_loading import import_string
 from django_tasks.backends.database.management.commands import db_worker
 
-from typing import Any, Tuple
+from queue_bridge import get_shareable_queue
 
 logger = logging.getLogger(__name__)
 
