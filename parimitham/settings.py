@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+from configurations.values import  PositiveIntegerValue, Value
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -46,18 +47,33 @@ TASKS = {
    'default': {'BACKEND': 'parimitham.core.interpreter_queue_backend.InterpreterQueueBackend'}
 }
 
+DB_HOST = Value(environ_prefix=None, environ_name="DB_HOST", default="localhost")
+DB_NAME = Value(environ_prefix=None, environ_name="DB_NAME", default="parimitham")
+DB_SCHEMA = Value(environ_prefix=None, environ_name="DB_SCHEMA", default="public")
+DB_USER = Value(environ_prefix=None, environ_name="DB_USER", default="postgres")
+DB_PASS = Value(environ_prefix=None, environ_name="DB_PASS", default="postgres")
+
+DB_PORT = PositiveIntegerValue(
+    environ_prefix=None, environ_name="DB_PORT", default=5432
+)
 DATABASES = {
-   'default': {
-       'ENGINE': 'django.db.backends.sqlite3',
-       'NAME': BASE_DIR / 'db.sqlite3',
-       'OPTIONS': {
-           'init_command': (
-               'pragma journal_mode = WAL; pragma synchronous = normal; '
-               'pragma temp_store = memory; pragma mmap_size = 30000000000;'
-           )
-       },
-   }
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "CONN_MAX_AGE": 60,
+        "OPTIONS": {
+            "options": "-c search_path=" + DB_SCHEMA,
+        },
+        "NAME": DB_NAME,
+        "USER": DB_USER,
+        "PASSWORD": DB_PASS,
+        "HOST": DB_HOST,
+        "PORT": DB_PORT,
+        "TEST": {
+            "NAME": "test_" + DB_NAME,
+        },
+    }
 }
+
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'

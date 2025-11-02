@@ -4,6 +4,7 @@ from concurrent.interpreters import Queue
 from typing import Dict, Optional
 from functools import cache
 
+
 # Global storage for worker queues
 _worker_queues: Dict[int, Queue] = {}
 
