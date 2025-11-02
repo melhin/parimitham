@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import signal
 import threading
 import time
@@ -11,8 +12,10 @@ from hypercorn.asyncio.run import asyncio_worker
 from hypercorn.config import Config, Sockets
 from rich.logging import RichHandler
 
-from parimitham.worker import configure_worker
+from parimitham.worker import configure_db_worker, configure_worker
 from queue_bridge import set_shareable_queue
+
+ENABLE_DB_BACKED_TASK = os.getenv("ENABLE_DB_BACKED_TASK", "False").lower() in ("true", "1", "t")
 
 
 def shutdown_monitor_task(
@@ -110,7 +113,11 @@ def task_worker_task(worker_number: int, log_level: int, shutdown_queue: Queue, 
         worker.shutdown(signal.SIGINT, None)
 
     set_shareable_queue("worker_queue", worker_queue)
-    worker = configure_worker()
+
+    if ENABLE_DB_BACKED_TASK:
+        worker = configure_db_worker()
+    else:
+        worker = configure_worker()
     logger.info("Task worker configured with queue: %s", worker_queue)
 
     try:
