@@ -54,6 +54,7 @@ def web_worker_task(
     insecure_sockets: tuple,
     shutdown_queue: Queue,
     worker_queue: Queue,
+    parent_shutdown_queue: Optional[Queue] = None,
 ) -> None:
     """
     Web worker task to be executed in a subinterpreter using InterpreterPoolExecutor.
@@ -96,11 +97,18 @@ def web_worker_task(
 
     except (OSError, RuntimeError) as e:
         logger.exception("Error in web worker: %s", e)
+        parent_shutdown_queue.put("shutdown")
     finally:
         logging.debug("asyncio worker finished")
 
 
-def task_worker_task(worker_number: int, log_level: int, shutdown_queue: Queue, worker_queue: Queue) -> None:
+def task_worker_task(
+    worker_number: int,
+    log_level: int,
+    shutdown_queue: Queue,
+    worker_queue: Queue,
+    parent_shutdown_queue: Optional[Queue] = None,
+) -> None:
     """
     Task worker task to be executed in a subinterpreter using InterpreterPoolExecutor.
     """
@@ -114,13 +122,12 @@ def task_worker_task(worker_number: int, log_level: int, shutdown_queue: Queue, 
 
     set_shareable_queue("worker_queue", worker_queue)
 
-    if ENABLE_DB_BACKED_TASK:
-        worker = configure_db_worker()
-    else:
-        worker = configure_worker()
-    logger.info("Task worker configured with queue: %s", worker_queue)
-
     try:
+        if ENABLE_DB_BACKED_TASK:
+            worker = configure_db_worker()
+        else:
+            worker = configure_worker()
+        logger.info("Task worker configured with queue: %s", worker_queue)
         # Start signal monitoring thread
         signal_thread = threading.Thread(
             target=shutdown_monitor_task,
@@ -128,10 +135,13 @@ def task_worker_task(worker_number: int, log_level: int, shutdown_queue: Queue, 
         )
         signal_thread.start()
 
-        logging.debug("Starting task worker")
+        logging.info("Starting task worker")
         worker.start()
 
     except (OSError, RuntimeError) as e:
         logging.exception("Error in task worker: %s", e)
+    except Exception:
+        logging.info("Task worker errored")
+        parent_shutdown_queue.put("shutdown")
     finally:
-        logging.debug("Task worker finished")
+        logging.info("Task worker finished")

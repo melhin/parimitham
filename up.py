@@ -8,9 +8,9 @@ import os
 import time
 from concurrent.futures import Future
 from concurrent.futures.interpreter import InterpreterPoolExecutor
-from concurrent.interpreters import Queue, create_queue
+from concurrent.interpreters import Queue, QueueEmpty, create_queue
 from socket import dup
-from typing import List
+from typing import List, Optional
 
 from hypercorn.config import Config
 from rich.logging import RichHandler
@@ -34,6 +34,11 @@ class InterpreterPoolManager:
         self.futures: List[Future] = []
         self.shutdown_queues = []  # List of Queue objects
         self._shutdown_requested = False
+        self._parent_shutdown_queue: Optional[Queue] = None
+
+    def set_parent_shutdown_queue(self, queue: Queue):
+        """Set the queue for parent communication."""
+        self._parent_shutdown_queue = queue
 
     def start_web_workers(self, app_path: str, workers: int, worker_queue: Queue, bind: str = "127.0.0.1:8000"):
         """Start web workers using the pool executor."""
@@ -64,6 +69,7 @@ class InterpreterPoolManager:
             insecure_sockets=tuple(insecure_sockets),
             shutdown_queue=shutdown_queue,
             worker_queue=worker_queue,
+            parent_shutdown_queue=self._parent_shutdown_queue,
         )
         self.futures.append(future)
 
@@ -88,6 +94,7 @@ class InterpreterPoolManager:
                 log_level=logger.level,
                 shutdown_queue=shutdown_queue,
                 worker_queue=worker_queue,
+                parent_shutdown_queue=self._parent_shutdown_queue,
             )
             self.futures.append(future)
 
@@ -138,6 +145,10 @@ class InterpreterPoolManager:
         self.shutdown()
 
 
+class ErrorRaisedFromPoolException(Exception):
+    pass
+
+
 def run_application(
     app_path: str,
     workers: int = WORKERS,
@@ -147,11 +158,17 @@ def run_application(
     logger.info("Starting Django application and task workers with InterpreterPoolExecutor")
     logger.info("Web workers: %d, Task workers: %d, Bind: %s", workers, task_workers, bind)
 
+    # Create parent shutdown queue
+    parent_shutdown_queue = create_queue()
+
     # Calculate total workers needed
     total_workers = 1 + task_workers  # 1 web worker + N task workers
     worker_queue = create_queue()
 
     with InterpreterPoolManager(max_workers=total_workers) as pool:
+        # Set parent shutdown queue
+        pool.set_parent_shutdown_queue(parent_shutdown_queue)
+
         try:
             # Start workers
             pool.start_web_workers(app_path, workers, worker_queue, bind)
@@ -159,13 +176,23 @@ def run_application(
 
             logger.info("All workers started. Press Ctrl+C to stop.")
 
+            # Wait for shutdown signal from parent queue or completion
+            while True:
+                # Check for shutdown message with a small timeout
+                try:
+                    message = parent_shutdown_queue.get(timeout=2)
+                    if message == "shutdown":
+                        logger.info("Received shutdown request from worker")
+                        raise ErrorRaisedFromPoolException()
+                except QueueEmpty:
+                    continue
+
             # Wait for completion
             pool.join()
-
+        except ErrorRaisedFromPoolException:
+            logger.error("Error Raised from pool exception")
         except KeyboardInterrupt:
             logger.info("Received keyboard interrupt, shutting down...")
-        except Exception as e:
-            logger.error("Application error: %s", e)
         finally:
             logger.info("Application shutdown complete")
 
