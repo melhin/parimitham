@@ -120,9 +120,9 @@ def task_worker_task(
         """Callback to handle task worker shutdown."""
         worker.shutdown(signal.SIGINT, None)
 
-    set_shareable_queue("worker_queue", worker_queue)
-
     try:
+        set_shareable_queue("worker_queue", worker_queue)
+
         if ENABLE_DB_BACKED_TASK:
             worker = configure_db_worker()
         else:

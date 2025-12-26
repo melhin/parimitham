@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: parimitham_app
+    command: python up.py --bind 0.0.0.0:9001
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/parimitham
+      - DB_NAME=parimitham
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - DB_HOST=db
+      #- ENABLE_DB_BACKED_TASK=1
+    ports:
+      - "9001:9001"
+    depends_on:
+      - db
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    restart: unless-stopped
+
+  db:
+    image: postgres:16
+    container_name: parimitham_db
+    environment:
+      - POSTGRES_DB=parimitham
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    #deploy:
+    #  resources:
+    #    limits:
+    #      cpus: '1'
+    #      memory: 512M
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

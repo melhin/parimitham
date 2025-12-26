@@ -4,7 +4,6 @@ This replaces the manual subinterpreter management with the new Python 3.14+ Int
 """
 
 import logging
-import os
 import time
 from concurrent.futures import Future
 from concurrent.futures.interpreter import InterpreterPoolExecutor
@@ -20,7 +19,7 @@ from worker_task import task_worker_task, web_worker_task
 logging.basicConfig(level=logging.INFO, format="[pool_manager] %(message)s", handlers=[RichHandler()])
 logger = logging.getLogger(__name__)
 
-WORKERS = os.cpu_count() or 2
+WORKERS = 2
 
 
 class InterpreterPoolManager:
@@ -214,6 +213,7 @@ if __name__ == "__main__":
         "--verbose",
         help="Increase logging verbosity",
         action="store_true",
+        default=True,
     )
     parser.add_argument(
         "-b",
