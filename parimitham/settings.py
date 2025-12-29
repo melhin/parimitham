@@ -12,9 +12,23 @@ ALLOWED_HOSTS = ["*"]
 ROOT_URLCONF = "parimitham.urls"
 WSGI_APPLICATION = "parimitham.wsgi.application"
 
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/4.2/howto/static-files/
+
+BASE_DIR = os.path.abspath(os.path.dirname(__name__))
+STATIC_URL = "static/"
+STATICFILES_DIRS = [
+    BASE_DIR + "/static/",
+]
+STATIC_ROOT = BASE_DIR + "/staticfiles/"
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
+    "django.contrib.admin",  # Added for admin interface
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     "django_tasks",
     "django_tasks.backends.database",
     "parimitham.core",
@@ -25,8 +39,10 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
 TEMPLATES = [
@@ -76,7 +92,6 @@ DATABASES = {
         },
     }
 }
-
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"

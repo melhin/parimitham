@@ -1,8 +1,13 @@
 from django.urls import path
 
-from .views import HealthCheckView, RootView
+from .views import (
+    delayed_hello_view,
+    health_check_view,
+    stream_upload_view,
+)
 
 urlpatterns = [
-    path("", RootView.as_view(), name="root"),
-    path("health/", HealthCheckView.as_view(), name="health"),
+    path("hello/", delayed_hello_view, name="delayed_hello"),
+    path("health/", health_check_view, name="health"),
+    path("upload/", stream_upload_view, name="stream_upload"),
 ]

@@ -10,3 +10,7 @@ wheels/
 .venv
 
 db.sqlite3*
+
+.env
+
+documents/
