@@ -8,10 +8,10 @@ dependencies = [
     "django==5.2",
     "django-configurations>=2.5.1",
     "django-tasks==0.7.0",
-    "docling>=2.66.0",
     "hypercorn>=0.17.3",
     "psycopg>=3.2.12",
     "rich>=14.0.0",
+    "unstructured>=0.18.24",
     "whitenoise>=6.11.0",
 ]
 

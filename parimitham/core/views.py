@@ -6,13 +6,12 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import Document
+from .tasks import delayed_hi, process_uploaded_file
 
 
 @require_http_methods(["GET"])
 def delayed_hello_view(request):
     """Root endpoint that triggers a task"""
-    from .tasks import delayed_hi
-
     delayed_hi.enqueue()
     return JsonResponse({"message": "Hello World from Django App"})
 
@@ -48,6 +47,7 @@ def stream_upload_view(request):
         document.file.name = f"documents/document_{document.id}_{file.name}"
         document.save()
 
+        process_uploaded_file.enqueue(document_id=document.id)
         return JsonResponse({"status": "success", "document_id": document.id, "message": "File uploaded successfully"})
 
     except Exception as e:
