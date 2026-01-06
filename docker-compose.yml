@@ -4,6 +4,7 @@ services:
   app:
     build: .
     container_name: parimitham_app
+    #image: localhost:6500/parimitham_app
     command: python up.py --bind 0.0.0.0:9001
     environment:
       - DATABASE_URL=postgres://postgres:postgres@db:5432/parimitham
@@ -19,6 +20,7 @@ services:
     deploy:
       resources:
         limits:
+          #cpus: '2'
           memory: 1G
     restart: unless-stopped
 
@@ -33,11 +35,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    #deploy:
-    #  resources:
-    #    limits:
-    #      cpus: '1'
-    #      memory: 512M
     restart: unless-stopped
 
 volumes:

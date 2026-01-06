@@ -2,8 +2,8 @@
 FROM python:3.14-slim
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Set work directory
 WORKDIR /app
@@ -19,7 +19,8 @@ COPY pyproject.toml .
 RUN pip install --no-cache-dir -e .
 
 # Copy application code
-COPY . .
+COPY manage.py queue_bridge.py up.py worker_task.py ./
+COPY parimitham ./parimitham
 
 # Create a non-root user
 RUN useradd -m appuser
