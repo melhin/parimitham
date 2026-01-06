@@ -6,5 +6,5 @@ class WebsiteUser(HttpUser):
     host = "http://127.0.0.1:9001"
 
     @task
-    def index_page(self):
-        self.client.get("/")
+    def hello(self):
+        self.client.get("/hello")
