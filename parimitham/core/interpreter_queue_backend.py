@@ -1,11 +1,9 @@
 import logging
-from dataclasses import dataclass
 from typing import TypeVar
 from uuid import uuid7
 
-from django_tasks.backends.base import BaseTaskBackend
-from django_tasks.task import ResultStatus, Task
-from django_tasks.task import TaskResult as BaseTaskResult
+from django.tasks import Task, TaskResult, TaskResultStatus
+from django.tasks.backends.base import BaseTaskBackend
 from typing_extensions import ParamSpec
 
 from queue_bridge import get_shareable_queue
@@ -16,10 +14,6 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-@dataclass(frozen=True)
-class TaskResult(BaseTaskResult[T]): ...
-
-
 class InterpreterQueueBackend(BaseTaskBackend):
     supports_async_task = True
     supports_get_result = True
@@ -27,7 +21,7 @@ class InterpreterQueueBackend(BaseTaskBackend):
 
     def _task_to_queue(
         self,
-        task: Task[P, T],
+        task: Task,
         args: P.args,  # type:ignore[valid-type]
         kwargs: P.kwargs,  # type:ignore[valid-type]
     ) -> TaskResult:
@@ -36,11 +30,14 @@ class InterpreterQueueBackend(BaseTaskBackend):
             task=task,
             args=args,
             kwargs=kwargs,
-            status=ResultStatus.NEW,
+            status=TaskResultStatus.READY,
             enqueued_at=None,
             started_at=None,
             finished_at=None,
             backend=self.alias,
+            last_attempted_at=None,
+            errors=[],
+            worker_ids=[],
         )
         shareable_task = (task.module_path, args, kwargs)
         worker_queue = get_shareable_queue("worker_queue")
@@ -51,12 +48,10 @@ class InterpreterQueueBackend(BaseTaskBackend):
 
     def enqueue(
         self,
-        task: Task[P, T],
+        task: Task,
         args: P.args,  # type:ignore[valid-type]
         kwargs: P.kwargs,  # type:ignore[valid-type]
-    ) -> TaskResult[T]:
+    ) -> None:
         self.validate_task(task)
 
-        result = self._task_to_queue(task, args, kwargs)
-
-        return result
+        self._task_to_queue(task, args, kwargs)

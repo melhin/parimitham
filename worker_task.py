@@ -136,12 +136,12 @@ def task_worker_task(
         signal_thread.start()
 
         logging.info("Starting task worker")
-        worker.start()
+        worker.run()
 
     except (OSError, RuntimeError) as e:
         logging.exception("Error in task worker: %s", e)
-    except Exception:
-        logging.info("Task worker errored")
+    except Exception as exc:
+        logging.exception(f"Task worker errored: {exc}")
         parent_shutdown_queue.put("shutdown")
     finally:
         logging.info("Task worker finished")

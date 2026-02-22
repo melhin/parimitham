@@ -54,27 +54,18 @@ uv sync
 
 5. Access the application in your web browser at [http://127.0.0.1:8001/](http://127.0.0.1:8001/) or use curl:
 ```bash
-curl http://127.0.0.1:8001/
+curl http://127.0.0.1:8001/dhello
 ```
 
 6. Observe the logs to see task processing in action.
 
 ## Available Endpoints
 
-- **Task Enqueue Endpoint**: [http://127.0.0.1:8001/](http://127.0.0.1:8001/)
+- **Task Enqueue Endpoint**: [http://127.0.0.1:8001/dhello](http://127.0.0.1:8001/dhello)
   - Synchronous endpoint that enqueues a sample task
   - Returns immediately after task creation
   - View task processing in the logs
 
-## Creating Custom Tasks
-
-Example task definition:
-```python
-# tasks/sample_tasks.py
-def process_data(data):
-    # Your task logic here
-    return f"Processed: {data}"
-```
 
 ## Database Configuration
 
@@ -82,7 +73,7 @@ This project uses PostgreSQL as the default database backend. To set up the data
 
 1. Start PostgreSQL using Docker Compose:
 ```bash
-docker compose up
+docker compose up db
 ```
 
 2. The default configuration will connect to:
@@ -116,6 +107,13 @@ Available options:
 - `-v, --verbose`: Enable verbose logging
 
 Example usage:
+
+Run with Subinterpreter Queue
 ```bash
 uv run up.py -w 4 -t 2 -b 127.0.0.1:8001 -v
+```
+
+Run with Database as Queue
+```bash
+ENABLE_DB_BACKED_TASK=1 uv run up.py -w 4 -t 2 -b 127.0.0.1:8001 -v
 ```

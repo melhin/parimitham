@@ -15,8 +15,7 @@ WSGI_APPLICATION = "parimitham.wsgi.application"
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
-    "django_tasks",
-    "django_tasks.backends.database",
+    "django_tasks_db",
     "parimitham.core",
 ]
 
@@ -48,7 +47,7 @@ TEMPLATES = [
 ENABLE_DB_BACKED_TASK = BooleanValue(environ_prefix=None, environ_name="ENABLE_DB_BACKED_TASK", default=False)
 
 if ENABLE_DB_BACKED_TASK:
-    TASKS = {"default": {"BACKEND": "django_tasks.backends.database.DatabaseBackend"}}
+    TASKS = {"default": {"BACKEND": "django_tasks_db.DatabaseBackend"}}
 else:
     TASKS = {"default": {"BACKEND": "parimitham.core.interpreter_queue_backend.InterpreterQueueBackend"}}
 

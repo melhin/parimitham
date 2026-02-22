@@ -1,9 +1,10 @@
 import logging
 import os
+from uuid import uuid7
 
 import django
 from django.core.management import call_command
-from django_tasks import DEFAULT_QUEUE_NAME, DEFAULT_TASK_BACKEND_ALIAS
+from django.tasks import DEFAULT_TASK_BACKEND_ALIAS, DEFAULT_TASK_QUEUE_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +26,13 @@ def configure_worker():
 
     logger.info("Starting task execution using Interpreter Queue Worker...")
     worker = InterpreterWorker(
-        queue_names=DEFAULT_QUEUE_NAME.split(","),
+        queue_names=[DEFAULT_TASK_QUEUE_NAME],
         interval=1,
         batch=False,
         backend_name=DEFAULT_TASK_BACKEND_ALIAS,
         startup_delay=True,
+        max_tasks=None,
+        worker_id=str(uuid7()),
     )
     return worker
 
@@ -40,14 +43,16 @@ def configure_db_worker():
     # Run migrations first
     migrate()
 
-    from django_tasks.backends.database.management.commands import db_worker
+    from django_tasks_db.management.commands import db_worker
 
     logger.info("Starting task execution using DB Worker...")
 
     return db_worker.Worker(
-        queue_names=DEFAULT_QUEUE_NAME.split(","),
+        queue_names=[DEFAULT_TASK_QUEUE_NAME],
         interval=1,
         batch=False,
         backend_name=DEFAULT_TASK_BACKEND_ALIAS,
         startup_delay=True,
+        max_tasks=None,
+        worker_id=str(uuid7()),
     )
