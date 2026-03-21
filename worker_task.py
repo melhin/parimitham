@@ -4,6 +4,7 @@ import os
 import signal
 import threading
 import time
+from concurrent import interpreters
 from concurrent.interpreters import Queue, QueueEmpty
 from socket import socket
 from typing import Any, Callable, Optional
@@ -66,9 +67,14 @@ def web_worker_task(
     worker_shutdown_event = asyncio.Event()
     worker_shutdown_event.clear()
 
+    # In worker_task.py
     def web_worker_shutdown_callback():
         """Callback to handle web worker shutdown."""
+        logger.info("Shutdown signal received")
         worker_shutdown_event.set()
+        # Also put a message in the parent queue if available
+        if parent_shutdown_queue:
+            parent_shutdown_queue.put("shutdown")
 
     logger.info("Starting hypercorn worker")
     try:
@@ -97,9 +103,26 @@ def web_worker_task(
 
     except (OSError, RuntimeError) as e:
         logger.exception("Error in web worker: %s", e)
-        parent_shutdown_queue.put("shutdown")
+        if parent_shutdown_queue:
+            parent_shutdown_queue.put("shutdown")
+        curr = interpreters.get_current()
+        curr.close()
+    except Exception as e:
+        logger.exception("Unexpected error in web worker: %s", e)
+        if parent_shutdown_queue:
+            parent_shutdown_queue.put("shutdown")
     finally:
-        logging.debug("asyncio worker finished")
+        logging.debug("Starting worker cleanup")
+        # Signal the shutdown event to unblock asyncio
+        worker_shutdown_event.set()
+        # Give some time for asyncio to shut down gracefullytime.sleep(1)
+        time.sleep(1)
+
+        # Close the interpreter if running in a subinterpreter
+        if parent_shutdown_queue:
+            curr = interpreters.get_current()
+            curr.close()
+            logging.debug("Worker cleanup complete")
 
 
 def task_worker_task(
@@ -135,7 +158,6 @@ def task_worker_task(
         )
         signal_thread.start()
 
-        logging.info("Starting task worker")
         worker.run()
 
     except (OSError, RuntimeError) as e:

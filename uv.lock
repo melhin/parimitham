@@ -568,6 +568,7 @@ dependencies = [
     { name = "django-configurations" },
     { name = "django-tasks-db" },
     { name = "hypercorn" },
+    { name = "locust" },
     { name = "psycopg" },
     { name = "rich" },
 ]
@@ -584,6 +585,7 @@ requires-dist = [
     { name = "django-configurations", specifier = ">=2.5.1" },
     { name = "django-tasks-db", specifier = ">=0.12.0" },
     { name = "hypercorn", specifier = ">=0.17.3" },
+    { name = "locust", specifier = ">=2.42.6" },
     { name = "psycopg", specifier = ">=3.3.3" },
     { name = "rich", specifier = ">=14.0.0" },
 ]

@@ -16,4 +16,4 @@ def cpu_intensive_work() -> None:
     """
     Mock CPU-intensive work.
     """
-    time.sleep(random.randrange(2, 6))
+    time.sleep(random.randrange(6, 9))
