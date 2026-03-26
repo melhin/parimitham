@@ -19,7 +19,7 @@ from worker_task import task_worker_task, web_worker_task
 logging.basicConfig(level=logging.INFO, format="[pool_manager] %(message)s", handlers=[RichHandler()])
 logger = logging.getLogger(__name__)
 
-WORKERS = 2
+WORKERS = 3
 
 
 class InterpreterPoolManager:
@@ -29,11 +29,11 @@ class InterpreterPoolManager:
 
     def __init__(self, max_workers: int = None):
         self.max_workers = max_workers or WORKERS
-        self.executor = None
         self.futures: List[Future] = []
         self.shutdown_queues = []  # List of Queue objects
         self._shutdown_requested = False
         self._parent_shutdown_queue: Optional[Queue] = None
+        self.executor = InterpreterPoolExecutor(max_workers=self.max_workers)
 
     def set_parent_shutdown_queue(self, queue: Queue):
         """Set the queue for parent communication."""
@@ -41,8 +41,6 @@ class InterpreterPoolManager:
 
     def start_web_workers(self, app_path: str, workers: int, worker_queue: Queue, bind: str = "127.0.0.1:8000"):
         """Start web workers using the pool executor."""
-        if not self.executor:
-            self.executor = InterpreterPoolExecutor(max_workers=self.max_workers)
 
         logger.info("Starting web workers with InterpreterPoolExecutor")
 
@@ -51,33 +49,48 @@ class InterpreterPoolManager:
         config.bind = bind
         config.workers = workers
         sockets = config.create_sockets()
-        insecure_sockets = [(int(s.family), int(s.type), s.proto, dup(s.fileno())) for s in sockets.insecure_sockets]
 
-        # Create shutdown queue for web worker
-        shutdown_queue = create_queue()
-        self.shutdown_queues.append(shutdown_queue)
+        # Store socket metadata (not the actual duplicated FDs yet)
+        socket_metadata = tuple([(int(s.family), int(s.type), s.proto) for s in sockets.insecure_sockets])
 
-        # Submit web worker task
-        future = self.executor.submit(
-            web_worker_task,
-            worker_number=1,
-            log_level=logger.level,
-            application_path=app_path,
-            workers=workers,
-            bind=bind,
-            insecure_sockets=tuple(insecure_sockets),
-            shutdown_queue=shutdown_queue,
-            worker_queue=worker_queue,
-            parent_shutdown_queue=self._parent_shutdown_queue,
-        )
-        self.futures.append(future)
+        for i in range(workers):
+            # Duplicate sockets for EACH worker to avoid sharing file descriptors
+            insecure_sockets = tuple(
+                [
+                    (family, sock_type, proto, dup(s.fileno()))
+                    for (family, sock_type, proto), s in zip(socket_metadata, sockets.insecure_sockets)
+                ]
+            )
 
-        logger.debug("Web worker submitted to pool executor")
+            # Submit web worker task
+            # Create shutdown queue for each web worker
+            shutdown_queue = create_queue()
+            self.shutdown_queues.append(shutdown_queue)
+            future = self.executor.submit(
+                web_worker_task,
+                worker_number=i + 1,
+                log_level=logger.level,
+                application_path=app_path,
+                workers=workers,
+                bind=bind,
+                insecure_sockets=insecure_sockets,
+                shutdown_queue=shutdown_queue,
+                worker_queue=worker_queue,
+                parent_shutdown_queue=self._parent_shutdown_queue,
+            )
+            self.futures.append(future)
+
+        # Close the original sockets in the parent process after duplication
+        for s in sockets.insecure_sockets:
+            try:
+                s.close()
+            except Exception as e:
+                logger.warning("Failed to close original socket: %s", e)
+
+        logger.debug("Web workers submitted to pool executor")
 
     def start_task_workers(self, num_workers: int, worker_queue: Queue):
         """Start task workers using the pool executor."""
-        if not self.executor:
-            self.executor = InterpreterPoolExecutor(max_workers=self.max_workers)
 
         logger.info("Starting %d task workers with InterpreterPoolExecutor", num_workers)
 
@@ -121,7 +134,7 @@ class InterpreterPoolManager:
             try:
                 future.result(timeout=remaining_timeout)
             except Exception as e:
-                logger.warning("Worker task completed with error: %s", e)
+                logger.warning(f"Worker task completed with error: {e}")
 
         # Shutdown the executor
         if self.executor:
@@ -161,7 +174,7 @@ def run_application(
     parent_shutdown_queue = create_queue()
 
     # Calculate total workers needed
-    total_workers = 1 + task_workers  # 1 web worker + N task workers
+    total_workers = workers + task_workers  # N web workers + M task workers
     worker_queue = create_queue()
 
     with InterpreterPoolManager(max_workers=total_workers) as pool:

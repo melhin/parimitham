@@ -58,7 +58,6 @@ class InterpreterWorker:
 
         worker_queue = get_shareable_queue("worker_queue")
         logger.info("Using worker queue: %s", worker_queue)
-        # self.configure_signals()
 
         while self.running:
             try:

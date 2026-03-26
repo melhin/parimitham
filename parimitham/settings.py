@@ -58,6 +58,7 @@ DB_USER = Value(environ_prefix=None, environ_name="DB_USER", default="postgres")
 DB_PASS = Value(environ_prefix=None, environ_name="DB_PASS", default="postgres")
 
 DB_PORT = PositiveIntegerValue(environ_prefix=None, environ_name="DB_PORT", default=5432)
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -75,7 +76,6 @@ DATABASES = {
         },
     }
 }
-
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
