@@ -19,7 +19,8 @@ from worker_task import task_worker_task, web_worker_task
 logging.basicConfig(level=logging.INFO, format="[pool_manager] %(message)s", handlers=[RichHandler()])
 logger = logging.getLogger(__name__)
 
-WORKERS = 3
+WEB_WORKERS = 2
+TASK_WORKERS = 1
 
 
 class InterpreterPoolManager:
@@ -28,7 +29,7 @@ class InterpreterPoolManager:
     """
 
     def __init__(self, max_workers: int = None):
-        self.max_workers = max_workers or WORKERS
+        self.max_workers = max_workers or WEB_WORKERS
         self.futures: List[Future] = []
         self.shutdown_queues = []  # List of Queue objects
         self._shutdown_requested = False
@@ -163,9 +164,9 @@ class ErrorRaisedFromPoolException(Exception):
 
 def run_application(
     app_path: str,
-    workers: int = WORKERS,
+    workers: int = WEB_WORKERS,
     bind: str = "127.0.0.1:8000",
-    task_workers: int = WORKERS,
+    task_workers: int = TASK_WORKERS,
 ):
     logger.info("Starting Django application and task workers with InterpreterPoolExecutor")
     logger.info("Web workers: %d, Task workers: %d, Bind: %s", workers, task_workers, bind)
@@ -218,7 +219,7 @@ if __name__ == "__main__":
         "--workers",
         dest="workers",
         help="The number of web workers to spawn and use",
-        default=WORKERS,
+        default=WEB_WORKERS,
         type=int,
     )
     parser.add_argument(
@@ -232,14 +233,14 @@ if __name__ == "__main__":
         "-b",
         "--bind",
         help="Bind address for the web server",
-        default="127.0.0.1:9001",
+        default="0.0.0.0:9001",
         type=str,
     )
     parser.add_argument(
         "-t",
         "--task-workers",
         help="Number of task workers",
-        default=WORKERS,
+        default=TASK_WORKERS,
         type=int,
     )
 
