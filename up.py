@@ -19,17 +19,14 @@ from worker_task import task_worker_task, web_worker_task
 logging.basicConfig(level=logging.INFO, format="[pool_manager] %(message)s", handlers=[RichHandler()])
 logger = logging.getLogger(__name__)
 
-WEB_WORKERS = 3
-TASK_WORKERS = 2
-
 
 class InterpreterPoolManager:
     """
     Manages worker processes using InterpreterPoolExecutor.
     """
 
-    def __init__(self, max_workers: int = None):
-        self.max_workers = max_workers or WEB_WORKERS
+    def __init__(self, max_workers: int):
+        self.max_workers = max_workers
         self.futures: List[Future] = []
         self.shutdown_queues = []  # List of Queue objects
         self._shutdown_requested = False
@@ -164,9 +161,9 @@ class ErrorRaisedFromPoolException(Exception):
 
 def run_application(
     app_path: str,
-    workers: int = WEB_WORKERS,
+    workers: int,
+    task_workers: int,
     bind: str = "127.0.0.1:8000",
-    task_workers: int = TASK_WORKERS,
 ):
     logger.info("Starting Django application and task workers with InterpreterPoolExecutor")
     logger.info("Web workers: %d, Task workers: %d, Bind: %s", workers, task_workers, bind)
@@ -219,7 +216,7 @@ if __name__ == "__main__":
         "--workers",
         dest="workers",
         help="The number of web workers to spawn and use",
-        default=WEB_WORKERS,
+        default=2,
         type=int,
     )
     parser.add_argument(
@@ -227,7 +224,7 @@ if __name__ == "__main__":
         "--verbose",
         help="Increase logging verbosity",
         action="store_true",
-        default=True,
+        default=False,
     )
     parser.add_argument(
         "-b",
@@ -240,7 +237,7 @@ if __name__ == "__main__":
         "-t",
         "--task-workers",
         help="Number of task workers",
-        default=TASK_WORKERS,
+        default=1,
         type=int,
     )
 
@@ -258,6 +255,6 @@ if __name__ == "__main__":
     run_application(
         app_path=application_path,
         workers=args.workers,
-        bind=args.bind,
         task_workers=args.task_workers,
+        bind=args.bind,
     )

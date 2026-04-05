@@ -5,7 +5,6 @@ services:
         build: .
         container_name: parimitham_app
         #image: localhost:6500/parimitham_app
-        command: python up.py --bind 0.0.0.0:9001
         environment:
             - DATABASE_URL=postgres://postgres:postgres@db:5432/parimitham
             - DB_NAME=parimitham
