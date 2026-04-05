@@ -30,4 +30,4 @@ USER appuser
 EXPOSE 9001
 
 # Command to run the application
-CMD ["python", "up.py", "-w", "4", "-t", "2"]
+CMD ["python", "up.py", "-w", "2", "-t", "2"]
