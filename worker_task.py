@@ -4,14 +4,12 @@ import os
 import signal
 import threading
 import time
-from concurrent import interpreters
 from concurrent.interpreters import Queue, QueueEmpty
 from socket import socket
 from typing import Any, Callable, Optional
 
 from hypercorn.asyncio.run import asyncio_worker
 from hypercorn.config import Config, Sockets
-from rich.logging import RichHandler
 
 from parimitham.worker import configure_db_worker, configure_worker
 from queue_bridge import set_shareable_queue
@@ -64,7 +62,9 @@ def web_worker_task(
     """
     Web worker task to be executed in a subinterpreter using InterpreterPoolExecutor.
     """
-    logging.basicConfig(level=log_level, format=f"[{worker_number}] %(message)s", handlers=[RichHandler()])
+    logging.basicConfig(
+        level=log_level, format=f"%(asctime)s Web-[{worker_number}] %(message)s", handlers=[logging.StreamHandler()]
+    )
 
     logger = logging.getLogger(__name__)
     logger.info("Starting web worker: %d", worker_number)
@@ -162,7 +162,9 @@ def task_worker_task(
     """
     Task worker task to be executed in a subinterpreter using InterpreterPoolExecutor.
     """
-    logging.basicConfig(level=log_level, format=f"[{worker_number}] %(message)s", handlers=[RichHandler()])
+    logging.basicConfig(
+        level=log_level, format=f"%(asctime)s Task-[{worker_number}] %(message)s", handlers=[logging.StreamHandler()]
+    )
     logger = logging.getLogger(__name__)
     logger.info("Starting task worker: %d", worker_number)
     thread_shutdown_event = threading.Event()

@@ -1,5 +1,4 @@
 import logging
-import random
 import time
 
 from django.tasks import task
@@ -8,12 +7,12 @@ logger = logging.getLogger(__name__)
 
 
 @task()
-def cpu_intensive_work_task() -> None:
-    cpu_intensive_work()
+def cpu_intensive_work_task(sleep_time: int) -> None:
+    cpu_intensive_work(sleep_time)
 
 
-def cpu_intensive_work() -> None:
+def cpu_intensive_work(sleep_time: int) -> None:
     """
     Mock CPU-intensive work.
     """
-    time.sleep(random.randrange(6, 9))
+    time.sleep(sleep_time)
