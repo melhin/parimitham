@@ -19,8 +19,8 @@ from worker_task import task_worker_task, web_worker_task
 logging.basicConfig(level=logging.INFO, format="[pool_manager] %(message)s", handlers=[RichHandler()])
 logger = logging.getLogger(__name__)
 
-WEB_WORKERS = 2
-TASK_WORKERS = 1
+WEB_WORKERS = 3
+TASK_WORKERS = 2
 
 
 class InterpreterPoolManager:
