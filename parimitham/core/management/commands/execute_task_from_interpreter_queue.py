@@ -66,7 +66,6 @@ class InterpreterWorker:
                 if shareable_task is None:
                     continue
 
-                logger.info("Got task from queue: %s", shareable_task)
                 self.run_task(shareable_task)
 
             except QueueEmpty:
@@ -79,7 +78,7 @@ class InterpreterWorker:
             self.running_task = True
             module_path, args, kwargs = shareable_task
 
-            logger.info("Starting execution of task: %s", module_path)
+            logger.info("Executing task from queue: %s", shareable_task)
 
             task_func = import_string(module_path).func
 

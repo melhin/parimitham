@@ -41,7 +41,6 @@ class InterpreterQueueBackend(BaseTaskBackend):
         )
         shareable_task = (task.module_path, args, kwargs)
         worker_queue = get_shareable_queue("worker_queue")
-        logger.info("Enqueuing in queue : %s", worker_queue)
         worker_queue.put(shareable_task)
         logger.info("Task enqueued: %s", result.id)
         return result
