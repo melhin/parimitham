@@ -7,3 +7,4 @@
 * [Talks - Yury Selivanov: Overcoming GIL with subinterpreters and immutability](https://youtu.be/fwRMdncVOnA?si=wBXTKyW_Fa7Mmrza)
 * [Multiple interpreters in the same process](https://docs.python.org/3/library/concurrent.interpreters.html#multiple-interpreters-and-isolation)
 * [Multi-phase extension module initialization](https://peps.python.org/pep-0489/)
+* [I was wrong about Subinterpreters](https://blog.changs.co.uk/i-was-wrong-about-subinterpreters.html)
